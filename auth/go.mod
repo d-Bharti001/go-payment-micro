@@ -3,7 +3,8 @@ module github.com/d-Bharti001/go-payment-micro
 go 1.25.4
 
 require (
-	google.golang.org/grpc v1.79.1
+	github.com/golang-jwt/jwt/v5 v5.3.1
+	google.golang.org/grpc v1.79.3
 	google.golang.org/protobuf v1.36.11
 )
 

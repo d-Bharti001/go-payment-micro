@@ -6,9 +6,10 @@ import (
 	"log"
 	"net"
 
+	"google.golang.org/grpc"
+
 	"github.com/d-Bharti001/go-payment-micro/internal/auth"
 	pb "github.com/d-Bharti001/go-payment-micro/proto"
-	"google.golang.org/grpc"
 )
 
 const (
