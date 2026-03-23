@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/IBM/sarama"
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -14,13 +15,15 @@ import (
 )
 
 type MoneyMovementService struct {
-	db *sql.DB
+	db          *sql.DB
+	msgProducer sarama.SyncProducer
 	pb.UnimplementedMoneyMovementServiceServer
 }
 
-func NewMoneyMovementService(db *sql.DB) *MoneyMovementService {
+func NewMoneyMovementService(db *sql.DB, msgProducer sarama.SyncProducer) *MoneyMovementService {
 	return &MoneyMovementService{
-		db: db,
+		db:          db,
+		msgProducer: msgProducer,
 	}
 }
 
@@ -134,6 +137,8 @@ func (svc *MoneyMovementService) Capture(ctx context.Context, payload *pb.Captur
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	producer.SendCaptureMessage(svc.msgProducer, authorizeTransaction.pid, authorizeTransaction.srcUserId, authorizeTransaction.amount)
 
 	return &emptypb.Empty{}, nil
 }

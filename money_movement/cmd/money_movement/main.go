@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 
+	"github.com/IBM/sarama"
 	"google.golang.org/grpc"
 
 	mm "github.com/d-Bharti001/go-payment-micro/internal/money_movement"
@@ -20,6 +21,7 @@ const (
 )
 
 var db *sql.DB
+var msgProducer sarama.SyncProducer
 
 func main() {
 	var err error
@@ -44,9 +46,21 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Sarama Producer setup
+	msgProducer, err = sarama.NewSyncProducer([]string{"localhost:9092"}, sarama.NewConfig())
+	if err != nil {
+		log.Fatalf("Error creating message queue producer: %s", err)
+	}
+
+	defer func() {
+		if err = msgProducer.Close(); err != nil {
+			log.Printf("Error closing message queue producer: %s", err)
+		}
+	}()
+
 	// GRPC Server setup
 	grpcServer := grpc.NewServer()
-	mmService := mm.NewMoneyMovementService(db)
+	mmService := mm.NewMoneyMovementService(db, msgProducer)
 	pb.RegisterMoneyMovementServiceServer(grpcServer, mmService)
 
 	// Listen and serve
