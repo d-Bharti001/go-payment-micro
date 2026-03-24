@@ -10,8 +10,8 @@ service MoneyMovementService {
 }
 
 message AuthorizePayload {
-  string customerWalletUserId = 1;
-  string merchantWalletUserId = 2;
+  string customerUserId = 1;
+  string merchantUserId = 2;
   int64 paise = 3;
 }
 
@@ -21,4 +21,5 @@ message AuthorizeResponse {
 
 message CapturePayload {
   string pid = 1;
+  string customerUserId = 2;
 }

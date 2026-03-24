@@ -34,13 +34,13 @@ func (svc *MoneyMovementService) Authorize(ctx context.Context, payload *pb.Auth
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	merchantWallet, err := fetchWalletByUserID(tx, payload.GetMerchantWalletUserId(), CUSTOMER_WALLET)
+	merchantWallet, err := fetchWalletByUserID(tx, payload.GetMerchantUserId(), CUSTOMER_WALLET)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
 	}
 
-	customerWallet, err := fetchWalletByUserID(tx, payload.GetCustomerWalletUserId(), MERCHANT_WALLET)
+	customerWallet, err := fetchWalletByUserID(tx, payload.GetCustomerUserId(), MERCHANT_WALLET)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -90,7 +90,7 @@ func (svc *MoneyMovementService) Capture(ctx context.Context, payload *pb.Captur
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	authorizeTransaction, err := fetchTransactionForCapture(tx, payload.GetPid())
+	authorizeTransaction, err := fetchTransactionForCapture(tx, payload.GetPid(), payload.GetCustomerUserId())
 	if err != nil {
 		tx.Rollback()
 		return nil, err

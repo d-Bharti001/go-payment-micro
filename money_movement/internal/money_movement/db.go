@@ -205,7 +205,7 @@ func createTransaction(
 	return nil
 }
 
-func fetchTransactionForCapture(tx *sql.Tx, pid string) (*transaction, error) {
+func fetchTransactionForCapture(tx *sql.Tx, pid string, customerUserID string) (*transaction, error) {
 	stmt, err := tx.Prepare(`
 		SELECT
 			id,
@@ -221,13 +221,14 @@ func fetchTransactionForCapture(tx *sql.Tx, pid string) (*transaction, error) {
 			final_dst_merchant_wallet_id,
 			amount
 		FROM transactions
-		WHERE pid = ?
+		WHERE
+			pid = ? AND src_user_id = ?
 	`)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	rows, err := stmt.Query(pid)
+	rows, err := stmt.Query(pid, customerUserID)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
