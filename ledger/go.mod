@@ -2,9 +2,13 @@ module github.com/d-Bharti001/go-payment-micro
 
 go 1.25.4
 
-require github.com/IBM/sarama v1.47.0
+require (
+	github.com/IBM/sarama v1.47.0
+	github.com/go-sql-driver/mysql v1.9.3
+)
 
 require (
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/eapache/go-resiliency v1.7.0 // indirect
 	github.com/eapache/queue v1.1.0 // indirect

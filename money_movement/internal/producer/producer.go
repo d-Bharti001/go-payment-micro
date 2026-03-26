@@ -67,5 +67,5 @@ func sendMessage[T EmailMsg | LedgerMsg](msgProducer sarama.SyncProducer, msg T,
 		return
 	}
 
-	log.Printf("Message send to partition %d at offset %d\n", partition, offset)
+	log.Printf("Message sent to partition %d at offset %d\n", partition, offset)
 }

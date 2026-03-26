@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -11,6 +12,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	_ "github.com/d-Bharti001/go-payment-micro/docs"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
+
 	authpb "github.com/d-Bharti001/go-payment-micro/auth/proto"
 	mmpb "github.com/d-Bharti001/go-payment-micro/money_movement/proto"
 )
@@ -18,6 +22,19 @@ import (
 var authClient authpb.AuthServiceClient
 var mmClient mmpb.MoneyMovementServiceClient
 
+// @title						Payment API Gateway
+// @version					1.0
+// @description				API Gateway service for payment app
+// @BasePath					/
+//
+// @securityDefinitions.basic	BasicAuth
+// @in							header
+// @name						Authorization
+//
+// @securityDefinitions.apikey	BearerAuth
+// @in							header
+// @name						Authorization
+// @description				Enter the token with the `Bearer ` prefix, e.g. `Bearer <jwt>`
 func main() {
 
 	// GRPC Connection to Auth service
@@ -37,7 +54,7 @@ func main() {
 
 	// GRPC Connection to Money Movement service
 
-	mmConn, err := grpc.NewClient("money_movement:7000", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	mmConn, err := grpc.NewClient("money-movement:7000", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -52,11 +69,36 @@ func main() {
 
 	// HTTP Server
 
-	http.HandleFunc("/login", login)
-	http.HandleFunc("/customer/payment/authorize", customerPaymentAuthorize)
-	http.HandleFunc("/customer/payment/capture", customerPaymentCapture)
+	// Swagger docs
+	http.Handle("GET /swagger/", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+	))
+
+	http.HandleFunc("GET /login", login)
+	http.HandleFunc("POST /customer/payment/authorize", customerPaymentAuthorize)
+	http.HandleFunc("POST /customer/payment/capture", customerPaymentCapture)
+
+	fmt.Println("Listening on port 8080")
+	err = http.ListenAndServe(":8080", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
+// Login godoc
+//
+//	@Summary		Customer login
+//	@Description	Login endpoint for a customer. Required before initiating a payment.
+//
+//	@Tags			login
+//	@Produce		plain
+//	@Security		BasicAuth
+//
+//	@Param			Authorization	header		string	true	"Base64 encoded username and password, e.g., 'Basic base64(username:password)'"
+//
+//	@Success		200				{string}	string	"JWT token"
+//	@Failure		401				{string}	string
+//	@Router			/login [get]
 func login(w http.ResponseWriter, r *http.Request) {
 	username, password, ok := r.BasicAuth()
 	if !ok {
@@ -73,6 +115,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
 		_, writeErr := w.Write([]byte(err.Error()))
 		if writeErr != nil {
 			log.Println(writeErr)
@@ -86,6 +129,31 @@ func login(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type AuthorizePayload struct {
+	MerchantUserId string `json:"merchant_user_id"`
+	Paise          int64  `json:"paise"`
+}
+
+type AuthorizeResponse struct {
+	Pid string `json:"pid"`
+}
+
+// CustomerPaymentAuthorize godoc
+//
+//	@Summary		Authorize a customer payment
+//	@Description	Authorizes a payment from the authenticated customer to the merchant.
+//	@Description	Transfers the payment amount from the customer's Default account to their Payment account.
+//	@Description	Returns a PID used to capture the payment as the next step.
+//	@Tags			payment
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			payload	body		AuthorizePayload	true	"Authorize payment payload"
+//	@Success		200		{object}	AuthorizeResponse
+//	@Failure		400		{string}	string
+//	@Failure		401		{string}	string
+//	@Failure		500		{string}	string
+//	@Router			/customer/payment/authorize [post]
 func customerPaymentAuthorize(w http.ResponseWriter, r *http.Request) {
 	// Get the JWT from Authorization header
 	authHeader := r.Header.Get("Authorization")
@@ -102,12 +170,7 @@ func customerPaymentAuthorize(w http.ResponseWriter, r *http.Request) {
 	token := strings.TrimPrefix(authHeader, "Bearer ")
 
 	// Extract the request payload
-	type authorizePayload struct {
-		MerchantUserId string `json:"merchant_user_id"`
-		Paise          int64  `json:"paise"`
-	}
-
-	var payload authorizePayload
+	var payload AuthorizePayload
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -142,19 +205,12 @@ func customerPaymentAuthorize(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		_, writeErr := w.Write([]byte(err.Error()))
-		if writeErr != nil {
-			log.Println(writeErr)
-		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// Return PID of authorize transaction
-	type response struct {
-		Pid string `json:"pid"`
-	}
-
-	resp := response{
+	resp := AuthorizeResponse{
 		Pid: authorizeResponse.Pid,
 	}
 
@@ -173,6 +229,25 @@ func customerPaymentAuthorize(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type CapturePayload struct {
+	Pid string `json:"pid"`
+}
+
+// CustomerPaymentCapture godoc
+//
+//	@Summary		Capture a payment
+//	@Description	Captures (finalizes) an authorized payment using its PID.
+//	@Description	Sends the payment amount from the customer's Payment account to the merchant's Incoming account.
+//	@Tags			payment
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			payload	body		CapturePayload	true	"Capture payload"
+//	@Success		200		{string}	string			"OK (empty body)"
+//	@Failure		400		{string}	string
+//	@Failure		401		{string}	string
+//	@Failure		500		{string}	string
+//	@Router			/customer/payment/capture [post]
 func customerPaymentCapture(w http.ResponseWriter, r *http.Request) {
 	// Get the JWT from Authorization header
 	authHeader := r.Header.Get("Authorization")
@@ -189,11 +264,7 @@ func customerPaymentCapture(w http.ResponseWriter, r *http.Request) {
 	token := strings.TrimPrefix(authHeader, "Bearer ")
 
 	// Extract the request payload
-	type capturePayload struct {
-		Pid string `json:"pid"`
-	}
-
-	var payload capturePayload
+	var payload CapturePayload
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -227,10 +298,7 @@ func customerPaymentCapture(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		_, writeErr := w.Write([]byte(err.Error()))
-		if writeErr != nil {
-			log.Println(writeErr)
-		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 

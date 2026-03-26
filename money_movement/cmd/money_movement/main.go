@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 
 	"github.com/IBM/sarama"
+	_ "github.com/go-sql-driver/mysql"
 	"google.golang.org/grpc"
 
 	mm "github.com/d-Bharti001/go-payment-micro/internal/money_movement"
@@ -14,10 +16,8 @@ import (
 )
 
 const (
-	dbDriver   = "mysql"
-	dbUser     = "root"
-	dbPassword = "Admin123"
-	dbName     = "money_movement"
+	dbDriver = "mysql"
+	dbName   = "money_movement"
 )
 
 var db *sql.DB
@@ -26,8 +26,11 @@ var msgProducer sarama.SyncProducer
 func main() {
 	var err error
 
+	dbUser := os.Getenv("MYSQL_USERNAME")
+	dbPassword := os.Getenv("MYSQL_PASSWORD")
+
 	// Open a database connection
-	dsn := fmt.Sprintf("%s:%s@tcp(localhost:3306)/%s", dbUser, dbPassword, dbName)
+	dsn := fmt.Sprintf("%s:%s@tcp(mysql-money-movement:3306)/%s", dbUser, dbPassword, dbName)
 
 	db, err = sql.Open(dbDriver, dsn)
 	if err != nil {
@@ -47,7 +50,13 @@ func main() {
 	}
 
 	// Sarama Producer setup
-	msgProducer, err = sarama.NewSyncProducer([]string{"localhost:9092"}, sarama.NewConfig())
+	saramaCfg := sarama.NewConfig()
+	saramaCfg.Producer.Return.Successes = true
+	saramaCfg.Producer.Return.Errors = true
+	saramaCfg.Producer.Retry.Max = 5
+	saramaCfg.Producer.RequiredAcks = sarama.WaitForAll
+	sarama.Logger = log.New(os.Stdout, "[sarama]", log.LstdFlags)
+	msgProducer, err = sarama.NewSyncProducer([]string{"my-cluster-kafka-bootstrap:9092"}, saramaCfg)
 	if err != nil {
 		log.Fatalf("Error creating message queue producer: %s", err)
 	}

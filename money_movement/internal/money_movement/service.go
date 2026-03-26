@@ -34,13 +34,13 @@ func (svc *MoneyMovementService) Authorize(ctx context.Context, payload *pb.Auth
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	merchantWallet, err := fetchWalletByUserID(tx, payload.GetMerchantUserId(), CUSTOMER_WALLET)
+	customerWallet, err := fetchWalletByUserID(tx, payload.GetCustomerUserId(), CUSTOMER_WALLET)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
 	}
 
-	customerWallet, err := fetchWalletByUserID(tx, payload.GetCustomerUserId(), MERCHANT_WALLET)
+	merchantWallet, err := fetchWalletByUserID(tx, payload.GetMerchantUserId(), MERCHANT_WALLET)
 	if err != nil {
 		tx.Rollback()
 		return nil, err

@@ -1,0 +1,136 @@
+basePath: /
+definitions:
+  main.AuthorizePayload:
+    properties:
+      merchant_user_id:
+        type: string
+      paise:
+        type: integer
+    type: object
+  main.AuthorizeResponse:
+    properties:
+      pid:
+        type: string
+    type: object
+  main.CapturePayload:
+    properties:
+      pid:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: API Gateway service for payment app
+  title: Payment API Gateway
+  version: "1.0"
+paths:
+  /customer/payment/authorize:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Authorizes a payment from the authenticated customer to the merchant.
+        Transfers the payment amount from the customer's Default account to their Payment account.
+        Returns a PID used to capture the payment as the next step.
+      parameters:
+      - description: Authorize payment payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/main.AuthorizePayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.AuthorizeResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Authorize a customer payment
+      tags:
+      - payment
+  /customer/payment/capture:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Captures (finalizes) an authorized payment using its PID.
+        Sends the payment amount from the customer's Payment account to the merchant's Incoming account.
+      parameters:
+      - description: Capture payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/main.CapturePayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK (empty body)
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Capture a payment
+      tags:
+      - payment
+  /login:
+    get:
+      description: Login endpoint for a customer. Required before initiating a payment.
+      parameters:
+      - description: Base64 encoded username and password, e.g., 'Basic base64(username:password)'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: JWT token
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+      security:
+      - BasicAuth: []
+      summary: Customer login
+      tags:
+      - login
+securityDefinitions:
+  BasicAuth:
+    type: basic
+  BearerAuth:
+    description: Enter the token with the `Bearer ` prefix, e.g. `Bearer <jwt>`
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

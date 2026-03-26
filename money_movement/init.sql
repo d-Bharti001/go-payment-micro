@@ -1,10 +1,8 @@
-DROP USER IF EXISTS 'money_movement_user'@'localhost';
-CREATE USER 'money_movement_user'@'localhost' IDENTIFIED BY 'Auth123';
+CREATE USER 'money_movement_user'@'%' IDENTIFIED BY 'Auth123';
 
-DROP DATABASE IF EXISTS money_movement;
 CREATE DATABASE money_movement;
 
-GRANT ALL PRIVILEGES ON money_movement.* TO 'money_movement_user'@'localhost';
+GRANT ALL PRIVILEGES ON money_movement.* TO 'money_movement_user'@'%';
 
 USE money_movement;
 
