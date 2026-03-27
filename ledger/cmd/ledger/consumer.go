@@ -81,7 +81,7 @@ func main() {
 
 	// Consume messages from all the partitions
 	for _, partition := range partitions {
-		partitionConsumer, err := consumer.ConsumePartition(topic, partition, sarama.OffsetNewest)
+		partitionConsumer, err := consumer.ConsumePartition(topic, partition, sarama.OffsetOldest)
 		if err != nil {
 			log.Fatal(err)
 		}
