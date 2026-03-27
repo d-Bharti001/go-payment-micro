@@ -34,13 +34,15 @@ type LedgerMsg struct {
 }
 
 func main() {
+	var err error
+
 	dbUser := os.Getenv("MYSQL_USERNAME")
 	dbPassword := os.Getenv("MYSQL_PASSWORD")
 
 	// Open a database connection
 	dsn := fmt.Sprintf("%s:%s@tcp(mysql-ledger:3306)/%s", dbUser, dbPassword, dbName)
 
-	db, err := sql.Open(dbDriver, dsn)
+	db, err = sql.Open(dbDriver, dsn)
 	if err != nil {
 		log.Fatal(err)
 	}
